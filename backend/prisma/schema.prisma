@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  profile   UserProfile?
+  sessions  WorkoutSession[]
+}
+
+model UserProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  age                Int?
+  heightCm           Int?
+  weightKg           Float?
+  fitnessLevel       String?
+  goal               String?
+  mode               String   @default("standard")
+  parqCleared        Boolean  @default(false)
+  onboardingComplete Boolean  @default(false)
+}
+
+model OtpToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Workout {
+  id          String            @id @default(uuid())
+  title       String
+  category    String
+  description String?
+  intervals   WorkoutInterval[]
+  createdAt   DateTime          @default(now())
+}
+
+model WorkoutInterval {
+  id          String  @id @default(uuid())
+  workoutId   String
+  workout     Workout @relation(fields: [workoutId], references: [id])
+  order       Int
+  label       String
+  durationSec Int
+  type        String
+  roundGroup  Int     @default(1)
+}
+
+model WorkoutSession {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  workoutId   String
+  status      String
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationSec Int?
+}
