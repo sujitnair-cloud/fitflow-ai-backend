@@ -1,0 +1,12 @@
+{
+  "name": "fitflow-ai-server",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "cd backend && npm install && npx prisma generate && npm run build",
+    "start": "cd backend && npx prisma migrate deploy && node dist/index.js"
+  }
+}
