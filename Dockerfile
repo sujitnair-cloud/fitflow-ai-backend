@@ -1,6 +1,7 @@
-FROM node:20-alpine
+FROM node:20-slim
 
-RUN apk add --no-cache openssl
+# Prisma needs OpenSSL on Debian slim
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -8,7 +9,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci
 
-# Generate Prisma client
+# Generate Prisma client (linux-glibc binary — matches node:20-slim)
 COPY backend/prisma ./prisma/
 RUN npx prisma generate
 
