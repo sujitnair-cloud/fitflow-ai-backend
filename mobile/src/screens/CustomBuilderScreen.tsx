@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +23,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface LocalInterval {
-  key: string;       // client-side unique key for list rendering
+  key: string;
   label: string;
   durationSec: number;
   type: 'work' | 'rest';
@@ -38,6 +38,14 @@ const CATEGORIES = [
 ];
 
 const DURATION_PRESETS = [10, 15, 20, 30, 45, 60, 90, 120];
+
+// Starter template shown by default so users see how intervals work
+const STARTER_INTERVALS: LocalInterval[] = [
+  { key: 'starter-1', label: 'Jumping Jacks', durationSec: 20, type: 'work' },
+  { key: 'starter-2', label: 'Rest', durationSec: 10, type: 'rest' },
+  { key: 'starter-3', label: 'High Knees', durationSec: 20, type: 'work' },
+  { key: 'starter-4', label: 'Rest', durationSec: 10, type: 'rest' },
+];
 
 let _keyCounter = 0;
 function nextKey() {
@@ -88,6 +96,7 @@ function IntervalRow({
   onMoveUp,
   onMoveDown,
   onDelete,
+  onEdit,
 }: {
   interval: LocalInterval;
   index: number;
@@ -95,6 +104,7 @@ function IntervalRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const accentColor = interval.type === 'work' ? '#FF6B35' : '#4ECDC4';
   return (
@@ -132,6 +142,11 @@ function IntervalRow({
         </View>
       </View>
 
+      {/* Edit */}
+      <Pressable onPress={onEdit} hitSlop={10} style={styles.editBtn}>
+        <Ionicons name="create-outline" size={18} color="#6C63FF" />
+      </Pressable>
+
       {/* Delete */}
       <Pressable onPress={onDelete} hitSlop={10} style={styles.deleteBtn}>
         <Ionicons name="close-circle" size={20} color="#444466" />
@@ -140,13 +155,22 @@ function IntervalRow({
   );
 }
 
-// ── Add-interval form ─────────────────────────────────────────────────────────
+// ── Add/Edit form — controlled from parent so Edit can pre-fill it ─────────────
 
-function AddIntervalForm({ onAdd }: { onAdd: (li: LocalInterval) => void }) {
-  const [label, setLabel] = useState('');
-  const [durationSec, setDurationSec] = useState(30);
-  const [type, setType] = useState<'work' | 'rest'>('work');
-
+function AddIntervalForm({
+  onAdd,
+  label, setLabel,
+  durationSec, setDurationSec,
+  type, setType,
+}: {
+  onAdd: (li: LocalInterval) => void;
+  label: string;
+  setLabel: (v: string) => void;
+  durationSec: number;
+  setDurationSec: (v: number) => void;
+  type: 'work' | 'rest';
+  setType: (v: 'work' | 'rest') => void;
+}) {
   function handleAdd() {
     const trimmed = label.trim();
     if (!trimmed) {
@@ -238,18 +262,24 @@ function AddIntervalForm({ onAdd }: { onAdd: (li: LocalInterval) => void }) {
 
 export default function CustomBuilderScreen() {
   const navigation = useNavigation<Nav>();
+  const scrollRef = useRef<ScrollView>(null);
 
   const [title, setTitle] = useState('My Workout');
   const [category, setCategory] = useState('hiit');
   const [rounds, setRounds] = useState(3);
-  const [localIntervals, setLocalIntervals] = useState<LocalInterval[]>([]);
+  const [localIntervals, setLocalIntervals] = useState<LocalInterval[]>([...STARTER_INTERVALS]);
   const [saving, setSaving] = useState(false);
 
-  const selectedCategory = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0];
+  // Form state lifted to parent so editInterval() can pre-fill it
+  const [formLabel, setFormLabel] = useState('');
+  const [formDurationSec, setFormDurationSec] = useState(30);
+  const [formType, setFormType] = useState<'work' | 'rest'>('work');
+
   const totalSec = totalDurationSec(localIntervals, rounds);
   const totalMin = Math.round(totalSec / 60);
 
   // ── Interval list mutations ────────────────────────────────────────────────
+
   const addInterval = useCallback((li: LocalInterval) => {
     setLocalIntervals((prev) => [...prev, li]);
   }, []);
@@ -275,6 +305,16 @@ export default function CustomBuilderScreen() {
   const deleteInterval = useCallback((index: number) => {
     setLocalIntervals((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  // Removes the interval from the list and pre-fills the form with its values
+  const editInterval = useCallback((index: number) => {
+    const interval = localIntervals[index];
+    setFormLabel(interval.label);
+    setFormDurationSec(interval.durationSec);
+    setFormType(interval.type);
+    setLocalIntervals((prev) => prev.filter((_, i) => i !== index));
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+  }, [localIntervals]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -337,6 +377,7 @@ export default function CustomBuilderScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -428,13 +469,22 @@ export default function CustomBuilderScreen() {
                   onMoveUp={() => moveUp(index)}
                   onMoveDown={() => moveDown(index)}
                   onDelete={() => deleteInterval(index)}
+                  onEdit={() => editInterval(index)}
                 />
               ))}
             </View>
           )}
 
-          {/* ── Add form ──────────────────────────────────────────────── */}
-          <AddIntervalForm onAdd={addInterval} />
+          {/* ── Add / Edit form ───────────────────────────────────────── */}
+          <AddIntervalForm
+            onAdd={addInterval}
+            label={formLabel}
+            setLabel={setFormLabel}
+            durationSec={formDurationSec}
+            setDurationSec={setFormDurationSec}
+            type={formType}
+            setType={setFormType}
+          />
 
           {/* ── Action buttons ────────────────────────────────────────── */}
           <View style={styles.actions}>
@@ -561,6 +611,7 @@ const styles = StyleSheet.create({
   typePill: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
   typePillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   intervalDuration: { color: '#666688', fontSize: 13, fontWeight: '600' },
+  editBtn: { padding: 10 },
   deleteBtn: { padding: 12 },
 
   // Add form
