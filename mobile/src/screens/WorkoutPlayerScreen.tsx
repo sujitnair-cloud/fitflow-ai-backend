@@ -25,6 +25,8 @@ type PlayerRoute = RouteProp<RootStackParamList, 'WorkoutPlayer'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const TIMER_FONT = Math.min(SCREEN_W * 0.28, 180);
+const TIMER_LINE = Math.min(SCREEN_W * 0.32, 210);
 
 const WORK_COLOR = '#FF6B35';
 const REST_COLOR = '#4ECDC4';
@@ -40,17 +42,20 @@ function formatTime(seconds: number): string {
 }
 
 function ToggleIconBtn({
-  iconOn, iconOff, enabled, onToggle, color,
+  iconOn, iconOff, enabled, onToggle, color, label,
 }: {
   iconOn: React.ComponentProps<typeof Ionicons>['name'];
   iconOff: React.ComponentProps<typeof Ionicons>['name'];
   enabled: boolean;
   onToggle: () => void;
   color: string;
+  label: string;
 }) {
+  const btnColor = enabled ? color : '#444466';
   return (
     <Pressable onPress={onToggle} hitSlop={12} style={styles.toggleBtn}>
-      <Ionicons name={enabled ? iconOn : iconOff} size={22} color={enabled ? color : '#444466'} />
+      <Ionicons name={enabled ? iconOn : iconOff} size={22} color={btnColor} />
+      <Text style={[styles.toggleLabel, { color: btnColor }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -254,12 +259,14 @@ export default function WorkoutPlayerScreen() {
               enabled={audio.voiceEnabled}
               onToggle={() => audio.setVoiceEnabled((v) => !v)}
               color={accentColor}
+              label="Voice"
             />
             <ToggleIconBtn
-              iconOn="phone-portrait" iconOff="phone-portrait-outline"
+              iconOn="pulse" iconOff="pulse-outline"
               enabled={audio.hapticsEnabled}
               onToggle={() => audio.setHapticsEnabled((h) => !h)}
               color={accentColor}
+              label="Haptics"
             />
             {music.isWebPlatform && (
               <ToggleIconBtn
@@ -267,6 +274,7 @@ export default function WorkoutPlayerScreen() {
                 enabled={music.musicEnabled}
                 onToggle={music.toggleMusic}
                 color={musicProfile?.accentColor ?? accentColor}
+                label="Music"
               />
             )}
           </View>
@@ -306,6 +314,10 @@ export default function WorkoutPlayerScreen() {
           <Text style={[styles.timerText, { color: accentColor }]}>
             {formatTime(state.timeRemaining)}
           </Text>
+        </View>
+
+        {/* WORK / REST badge — sits between timer and exercise name */}
+        <View style={styles.badgeZone}>
           <View style={[styles.typeBadge, { borderColor: accentColor }]}>
             <View style={[styles.typeDot, { backgroundColor: accentColor }]} />
             <Text style={[styles.typeText, { color: accentColor }]}>
@@ -375,7 +387,8 @@ const styles = StyleSheet.create({
   backBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   toggleRow: { flexDirection: 'row', gap: 4 },
-  toggleBtn: { padding: 6 },
+  toggleBtn: { padding: 6, alignItems: 'center', gap: 3 },
+  toggleLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.4 },
   titleBlock: { flex: 1, alignItems: 'center' },
   workoutTitle: { color: '#666688', fontSize: 13, fontWeight: '600', textAlign: 'center', letterSpacing: 0.5 },
   musicLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3, marginTop: 2 },
@@ -388,12 +401,13 @@ const styles = StyleSheet.create({
   },
   timerZone: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   timerText: {
-    fontSize: SCREEN_W * 0.28, fontWeight: '800',
-    fontVariant: ['tabular-nums'], letterSpacing: -2, lineHeight: SCREEN_W * 0.32,
+    fontSize: TIMER_FONT, fontWeight: '800',
+    fontVariant: ['tabular-nums'], letterSpacing: -2, lineHeight: TIMER_LINE,
   },
+  badgeZone: { alignItems: 'center', paddingVertical: 10 },
   typeBadge: {
     flexDirection: 'row', alignItems: 'center', borderWidth: 1.5,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4, marginTop: 12, gap: 6,
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4, gap: 6,
   },
   typeDot: { width: 7, height: 7, borderRadius: 4 },
   typeText: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
